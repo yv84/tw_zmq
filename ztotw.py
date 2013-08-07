@@ -21,7 +21,8 @@ args = parser.parse_args()
 
 
 
-ip_out, port_out = args.remoteip, args.remoteport
+ip_out = args.remoteip
+#port_out = args.remoteport
 zmq_in = "tcp://*:" + str(args.localport)
 #ip_out, port_out = "localhost" , 15011
 #zmq_in = 'tcp://*:15062'
