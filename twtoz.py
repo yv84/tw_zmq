@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description=' tcp/ip(port) -> zmq(port) -> tcp/
 parser.add_argument("--lp", dest='localport', type=int, required=True,
                    help='local port')
 parser.add_argument("--zp", dest='zmqport', type=int, required=True,
-                   help='remote port')
+                   help='remote zmq port')
 parser.add_argument("--rip", dest='remoteip', type=str, required=True,
                    help='remote ip')
 parser.add_argument("--rp", dest='remoteport', type=int, required=True,
