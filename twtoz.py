@@ -30,7 +30,7 @@ zs_port = "inproc://ps"
 
 conn = {}
 
-#profile handler
+
 def now():                               # текущее время на сервере
     return datetime.datetime.now()
 
@@ -61,7 +61,7 @@ class Echo(protocol.Protocol):
         print(conn)
         print('self.id_zmq  = ', end = '')
         print(self.id_zmq)
-        self.frontend = context.socket(zmq.DEALER) #kajdnoe podlyuchenie zoxdast dealera
+        self.frontend = context.socket(zmq.DEALER) #kajdnoe podlyuchenie sozdast dealera
         self.frontend.setsockopt(zmq.IDENTITY, self.id_zmq)
         self.frontend.connect(zs_port)
         self.closeTimer  = time.time()
@@ -157,7 +157,7 @@ backend = context.socket(zmq.DEALER)
 backend.setsockopt(zmq.IDENTITY, b'0')
 backend.connect(port_zmq)
 
-frontend = context.socket(zmq.ROUTER) #kajdnoe podlyuchenie zoxdast dealera
+frontend = context.socket(zmq.ROUTER) #kajdnoe podlyuchenie sozdast dealera
 frontend.bind(zs_port)
 
 def signal_handler(signum, frame):
