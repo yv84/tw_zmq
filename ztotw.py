@@ -33,7 +33,7 @@ q_conn = queue.Queue()
 
 
 #profile handler
-def now():                               # текущее время на сервере
+def now():                             
     return datetime.datetime.now()
 
 class handler():
@@ -51,7 +51,7 @@ class EchoClient(protocol.Protocol):
         self.factory = factory
     def connectionMade(self):
         conn[self.factory.id_zmq] = self
-        self.zsocket = context.socket(zmq.DEALER) #kajdnoe podlyuchenie sozdast dealera
+        self.zsocket = context.socket(zmq.DEALER) # every connect will create dealer
         self.zsocket.setsockopt(zmq.IDENTITY, self.factory.id_zmq)
         self.zsocket.connect(zbackend)
         print(conn)
@@ -165,7 +165,7 @@ context = zmq.Context()
 frontend = context.socket(zmq.ROUTER)
 frontend.bind(zmq_in)
 
-backend = context.socket(zmq.ROUTER) #kajdnoe podlyuchenie sozdast dealera
+backend = context.socket(zmq.ROUTER) # every connect will create dealer
 backend.bind(zbackend)
 
 poll = zmq.Poller()
