@@ -5,9 +5,6 @@ import datetime
 from random import choice
 import signal
 
-__author__ = "Felipe Cruz <felipecruz@loogica.net>"
-__license__ = "MIT/X11"
-
 
 import argparse
 parser = argparse.ArgumentParser(description=' zmq(port) -> zmq(port) ')
@@ -26,7 +23,7 @@ z_port_out = "tcp://*:" + str(args.remoteport)
 
 interrupted = False
 
-def now():                               # текущее время на сервере
+def now():
     return datetime.datetime.now()
 
 class handler():
@@ -61,21 +58,13 @@ class ServerTask():#(threading.Thread):
                 if frontend in sockets:
                     if sockets[frontend] == zmq.POLLIN:
                         [zmq_id0, _id, msg] = H.f_f(frontend.recv_multipart())
-                        #print('zmq_id0 = ', end ='')
-                        #print(zmq_id0, end =' +_id =  ')
-                        #print(_id, end =' +msg= ')
-                        #print(msg)
                         #print ('Server received %s id %s\n' % (msg, _id))
                         backend.send(_id, zmq.SNDMORE)
                         backend.send(msg)
                 if backend in sockets:
                     if sockets[backend] == zmq.POLLIN:
                         [_id, msg] = H.f_b(backend.recv_multipart())
-                        #print(zmq_id0, end =' - ')
-                        #print(_id, end =' - ')
-                        #print(msg)
                         #print ('Sending to frontend %s id %s\n' % (msg, _id))
-                        #if zmq_id0 == b'0': 
                         frontend.send(b'0', zmq.SNDMORE)
                         frontend.send(_id, zmq.SNDMORE)
                         frontend.send(msg)
