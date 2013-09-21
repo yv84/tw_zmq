@@ -1,5 +1,5 @@
 twtoz.py : twisted&#160;->&#160;pyzmq<br>
-zasync.py : pyzmq -> pyzmq &#160;(based on asyncsrv.py)<br>
+zasync.py : pyzmq -> pyzmq &#160;(based on zguide/examples/Python/asyncsrv.py)<br>
 ztotw.py : pyzmq&#160;->&#160;twisted<br>
 
 tcp/ip&#160;-->&#160;|&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;
