@@ -1,13 +1,14 @@
 import time
-import zmq
 import re
 import queue
 import datetime
 import signal
+import argparse
 
+import zmq
 from twisted.internet import reactor, protocol, threads
 
-import argparse
+
 parser = argparse.ArgumentParser(description=' zmq(port) -> tcp/ip(ip/port) ')
 parser.add_argument("--lp", dest='localport', type=int, required=True,
                    help='local port')
