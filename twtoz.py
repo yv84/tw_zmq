@@ -1,9 +1,9 @@
 import time
 import datetime
-import zmq
 import re
 import signal
 
+import zmq
 from twisted.internet import reactor, protocol, threads
 
 
