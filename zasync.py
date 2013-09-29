@@ -1,12 +1,13 @@
-import zmq
 import threading
 import time
 import datetime
 from random import choice
 import signal
-
-
 import argparse
+
+import zmq
+
+
 parser = argparse.ArgumentParser(description=' zmq(port) -> zmq(port) ')
 parser.add_argument("--lp", dest='localport', type=int, required=True,
                    help='local port')
