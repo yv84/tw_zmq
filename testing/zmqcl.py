@@ -22,11 +22,11 @@ class ZmqClient():
     def send(self, msg):
         data = (('%s  +/ cl: %s /' %(msg.decode('latin-1'),
                 now())).encode('latin-1'))
-        self.socket.send_multipart([data])
+        self.socket.send_multipart([b'', data])
 
     def recv(self):
         #  Get the reply.
-        [data] = self.socket.recv_multipart()
+        [empty, data] = self.socket.recv_multipart()
         yield data
 
 
@@ -44,5 +44,5 @@ if __name__ == '__main__':
     msg = (b'Hello',)
     for i in msg:
         z.send(i,)
-        msg_out = b"".join((msg_out,), z.recv())
+        msg_out = b"".join((msg_out, b"".join(z.recv())))
     print(msg_out)

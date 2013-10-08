@@ -44,5 +44,5 @@ if __name__ == '__main__':
         msg = (b'Hello',)
         for msg_ in msg:
             z.send(msg_,)
-            msg_out = b"".join((msg_out,),z.recv())
+            msg_out = b"".join((msg_out, "".join(z.recv())))
     print(msg_out)

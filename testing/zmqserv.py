@@ -12,8 +12,7 @@ class ZmqServ():
         self.conn = conn
         self.socket = self.context.socket(zmq.ROUTER)
         #self.socket.setsockopt(zmq.IDENTITY, b'1')
-        self.cnn = ''.join(('tcp://',conn['ip'],':',conn['port'],))
-        self.socket.bind(self.cnn)
+        self.socket.bind(''.join(('tcp://',conn['ip'],':',conn['port'],)))
 
         # Initialize poll set
         self.poller = zmq.Poller()
@@ -23,8 +22,8 @@ class ZmqServ():
         while True:
             socks = dict(self.poller.poll())
             if socks.get(self.socket) == zmq.POLLIN:
-                [address, message ] = self.socket.recv_multipart()
-                self.socket.send_multipart([address,
+                [zmq_id, address, message ] = self.socket.recv_multipart()
+                self.socket.send_multipart([zmq_id, address,
                     ('Echo disp hw=>%s at %s' % (message,
                         now())).encode('latin-1')])
 
@@ -37,3 +36,4 @@ if __name__ == '__main__':
     conn = {'ip': '127.0.0.1', 'port': '15065'}
     z = ZmqServ(conn)
     z.run()
+ 
