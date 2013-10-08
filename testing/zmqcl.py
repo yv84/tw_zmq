@@ -20,21 +20,29 @@ class ZmqClient():
         self.socket.connect(''.join(('tcp://',conn['ip'],':',conn['port'],)))
 
     def send(self, msg):
-        for request in msg:
-            msg = (('%s  +/ cl: %s /' %(request.decode('latin-1'),
+        data = (('%s  +/ cl: %s /' %(msg.decode('latin-1'),
                 now())).encode('latin-1'))
-            self.socket.send_multipart([msg])
+        self.socket.send_multipart([data])
 
-    def rcv(self):
+    def recv(self):
         #  Get the reply.
-        [msg] = self.socket.recv_multipart()
-        yield msg
+        [data] = self.socket.recv_multipart()
+        yield data
+
+
+def zmq_cl(conn, msg:list, msg_out:list):
+    z = ZmqClient(conn)
+    for i in msg:
+        z.send(i,)
+        msg_out.extend(list(z.recv()))
+
 
 if __name__ == '__main__':
     conn = {'ip': '127.0.0.1', 'port': '15065'}
     msg_out = []
     z = ZmqClient(conn)
     msg = (b'Hello',)
-    z.send(msg)
-    msg_out = b"".join(z.rcv())
+    for i in msg:
+        z.send(i,)
+        msg_out = b"".join((msg_out,), z.recv())
     print(msg_out)

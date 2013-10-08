@@ -11,9 +11,11 @@ import unittest
 #import zasync
 import testing.zmqcl as zmqcl
 import testing.zmqserv as zmqserv
+import testing.tcpserv as tcpserv
+import testing.tcpcl as tcpcl
 
 
-class twzmqTestCase(unittest.TestCase):
+class TwzmqTestCase(unittest.TestCase):
     def setUp(self):
         pass
 
@@ -22,32 +24,31 @@ class twzmqTestCase(unittest.TestCase):
 
     @unittest.skip("time")
     def test_run1(self):
-        pass
+        self.assertRegex("abc", "\w{3}")
 
     def test_run2(self):
-        def zmq_serv(conn):
-            z = zmqserv.ZmqServ(conn)
-            z.run()
-
-        def zmq_cl(conn, msg:list, msg_out:list):
-            z = zmqcl.ZmqClient(conn)
-            z.send(msg)
-            msg_out.extend(list(z.rcv()))
-    
-        conn = {'ip': '127.0.0.1', 'port': '15066'}
-        test_msg = (b'test',)
+        conn = {'ip': '127.0.0.1', 'port': '15067'}
+        test_msg = (b'test', b'test2', b'test3')
+        N = 10
         manager = Manager()
         ls = manager.list(test_msg)
         ls_out = manager.list()
         dc = manager.dict(conn)
         os.system('fuser -k '+conn['port']+'/tcp')
-        processes = [Process(target=zmq_serv, args=(dc,)),]
-        for i in range(20):
-            processes.append(Process(target=zmq_cl, args=(dc, ls, ls_out,)))
+        processes = [Process(target=zmqserv.zmq_serv, args=(dc,)),]
+        for i in range(N):
+            processes.append(Process(target=zmqcl.zmq_cl, args=(dc, ls, ls_out,)))
 
-        for p in processes:
+        processes[0].start()
+        time.sleep(0.1)
+        for p in processes[1:]:
             p.start()
-            time.sleep(0.1)
+
+        now = time.time()
+        while N != len(ls_out) and \
+          (now+30 > time.time()):
+            time.sleep(1)
+        print("zmq = %.3f" %(time.time() - now))
 
         processes.reverse()
         for p in processes:
@@ -55,12 +56,45 @@ class twzmqTestCase(unittest.TestCase):
             p.join()
 
         os.system('fuser -k '+conn['port']+'/tcp')
-        print(ls_out)
-        self.assertTrue(ls_out)
+        #print(ls_out)
+        print('zmq msg count %i' %len(ls_out))
+        self.assertTrue(N*len(test_msg) == len(ls_out))
 
 
     def test_run3(self):
-        self.assertRegex("abc", "\w{3}")
+
+        conn = {'ip': '127.0.0.1', 'port': '15079'}
+        test_msg = (b'test', b'test2', b'test3')
+        N = 10
+        manager = Manager()
+        ls = manager.list(test_msg)
+        ls_out = manager.list()
+        dc = manager.dict(conn)
+        os.system('fuser -k '+conn['port']+'/tcp')
+        processes = [Process(target=tcpserv.tcp_serv, args=(dc,)),]
+        for i in range(N):
+            processes.append(Process(target=tcpcl.tcp_cl, args=(dc, ls, ls_out,)))
+
+        processes[0].start()
+        time.sleep(0.1)
+        for p in processes[1:]:
+            p.start()
+
+        now = time.time()
+        while N*len(test_msg) != len(ls_out) and \
+          (now+30 > time.time()):
+            time.sleep(1)
+        print("tcp = %.3f" %(time.time() - now))
+        
+        processes.reverse()
+        for p in processes:
+            p.terminate()
+            p.join()
+
+        os.system('fuser -k '+conn['port']+'/tcp')
+        #print(ls_out)
+        print('tcp msg count %i' %len(ls_out))
+        self.assertTrue(N*len(test_msg) == len(ls_out))
 
 
 
