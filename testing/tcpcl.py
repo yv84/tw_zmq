@@ -1,4 +1,4 @@
-#! /usr/local/bin/python3
+#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 
 import datetime
@@ -19,8 +19,11 @@ class MyTCPClient():
         self.sock.close()
 
     def send(self, msg):
-        data = ('%s  +/ cl: %s /' %(msg.decode('latin-1'),
+        if msg != b'':
+            data = ('%s  +/ cl: %s /' %(msg.decode('latin-1'),
                 now())).encode('latin-1')
+        else:
+            data = msg
         self.sock.sendall(data)
 
     def recv(self):
@@ -34,7 +37,7 @@ def tcp_cl(conn, msg:list, msg_out:list):
         for i in msg:
             z.send(i)
             msg_out.extend(list(z.recv()))
-        z.send(b'')
+        #z.send(b'')
 
 
 if __name__ == '__main__':
