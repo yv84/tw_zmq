@@ -9,14 +9,19 @@ def now():
     return datetime.datetime.now()
 
 class ZmqClient():
-    def __init__(self, conn,):
+    def __init__(self, conn):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.DEALER)
-
-        self.zmq_id = b''.join([b'+',
-            re.findall(b'0x[\d\w]*', self.__str__().encode('latin-1'))[0],])
-            #',', port_in[15001][0], b':', port_in[15001][1] ])
-        self.socket.setsockopt(zmq.IDENTITY, self.zmq_id)
+        self.zmq_client_id = b''.join([b'+', re.findall(
+            b'0x[\d\w]*',
+            self.__str__().encode('latin-1'))[0],
+            (b''.join([
+                b',', conn['remote']['ip'].encode('latin-1'),
+                b':', conn['remote']['port'].encode('latin-1'),
+                ])
+                if conn.get('remote') else b'')
+            ])
+        self.socket.setsockopt(zmq.IDENTITY, self.zmq_client_id)
         self.socket.connect(''.join(('tcp://',conn['ip'],':',conn['port'],)))
 
     def send(self, msg):

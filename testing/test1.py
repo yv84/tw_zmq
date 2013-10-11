@@ -9,6 +9,7 @@ from multiprocessing import Process, Manager, JoinableQueue
 import unittest
 
 import twtoz
+import ztotw
 import testing.zmqcl as zmqcl
 import testing.zmqserv as zmqserv
 import testing.tcpserv as tcpserv
@@ -19,18 +20,19 @@ class TwzmqTestCase(unittest.TestCase):
     def setUp(self):
         pass
 
-    
+
     def tearDown(self):
         pass
 
-    
-    @unittest.skip("time")
-    def test_run1(self):
-        self.assertRegex("abc", "\w{3}")
 
-        
+    #@unittest.skip("time")
+    #def test_run1(self):
+    #    self.assertRegex("abc", "\w{3}")
+
+
     def test_zmqc_zmqs(self):
-        conn = {'ip': '127.0.0.1', 'port': '15067'}
+        conn = {'ip': '127.0.0.1', 'port': '15067',
+            'remote': {'ip': '127.0.0.1', 'port': '15085'}}
         test_msg = (b'test', b'test2', )
         N = 2
         manager = Manager()
@@ -102,18 +104,72 @@ class TwzmqTestCase(unittest.TestCase):
         self.assertTrue(N*len(test_msg) == len(ls_out))
 
 
-    def test_tcpc_twtoz_zmqs(self):
-        conntc = {'ip': '127.0.0.1', 'port': '15082'}
-        connzs = {'ip': '127.0.0.1', 'port': '15083'}
-        connts = {'ip': '127.0.0.1', 'port': '15084'}
+    def test_tcpc_TwtoZ_zmqs(self):
+        conntc = {'ip': '127.0.0.1', 'port': '15084',
+            'remote': {'ip': '127.0.0.1', 'port': '15085'} }
+        connzs = {'ip': '127.0.0.1', 'port': '15086'}
         test_msg = (b'test', b'test2' )
-        N = 2
+        N = 5
+        manager = Manager()
+        ls = manager.list(test_msg)
+        ls_out = manager.list()
+        dc = {}
+        for d, k in zip((conntc, connzs), ('tc', 'zs')):
+            dc[k]  = manager.dict(d)
+            os.system('fuser -k '+d['port']+'/tcp')
+
+        processes = []
+        processes.append(Process(target=zmqserv.zmq_serv, args=(dc['zs'],)))
+        processes.append(Process(target=twtoz.tw_to_z,
+                args=(dc,)))
+        for i in range(N):
+            processes.append(Process(target=tcpcl.tcp_cl,
+                args=(dc['tc'], ls, ls_out,)))
+
+        for p in processes[:2]:
+            p.start()
+        time.sleep(0.1)
+        for p in processes[2:]:
+            p.start()
+            time.sleep(0.1)
+
+        now = time.time()
+        while N*len(test_msg) != len(ls_out) and \
+          (now+10 > time.time()):
+            time.sleep(1)
+        print("zmq = %.3f" %(time.time() - now))
+
+        processes.reverse()
+        for p in processes[:-3]:
+            p.terminate()
+            p.join()
+        processes[-1].terminate()
+        processes[-1].join()
+        
+        print(processes)
+
+        for conn in (conntc, connzs):
+            os.system('fuser -k '+conn['port']+'/tcp')
+        print(ls_out)
+        print('twtoz msg count %i' %len(ls_out))
+        self.assertTrue(N*len(test_msg) == len(ls_out))
+
+
+
+
+    @unittest.skip("time")
+    def test_zmqc_ZtoTw_tcps(self):
+        conncr = {'ip': '127.0.0.1', 'port': '15087'}
+        connzc = {'ip': '127.0.0.1', 'port': '15085'}
+        connts = {'ip': '127.0.0.1', 'port': '15086'}
+        test_msg = (b'test', b'test2' )
+        N = 5
         manager = Manager()
         ls = manager.list(test_msg)
         ls_out = manager.list()
         dc = {}
 
-        for d, k in zip((conntc, connts, connzs), ('tc', 'ts', 'zs')):
+        for d, k in zip((connzc, connts, conncr), ('zc', 'ts', 'cr')):
             dc[k]  = manager.dict(d)
             os.system('fuser -k '+d['port']+'/tcp')
 
@@ -150,6 +206,10 @@ class TwzmqTestCase(unittest.TestCase):
         print(ls_out)
         print('twtoz msg count %i' %len(ls_out))
         self.assertTrue(N*len(test_msg) == len(ls_out))
+
+
+
+
 
 
 

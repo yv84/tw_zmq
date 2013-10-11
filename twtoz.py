@@ -59,17 +59,22 @@ class Echo(protocol.Protocol):
         self.zs_port = self.factory.zs_port
 
     def connectionMade(self):
-        self.id_zmq = b''.join([b'+', re.findall(
+        self.zmq_client_id = b''.join([b'+', re.findall(
             b'0x[\d\w]*',
             self.__str__().encode('latin-1'))[0],
-            b',', self.factory.ip_out.encode('latin-1'),
-            b':', self.factory.port_out.encode('latin-1')])
-        connection[self.id_zmq] = self
-        print('connection = ', end='')
-        print(connection)
+            (b''.join([
+                b',', self.factory.conn['remote']['ip'].encode('latin-1'),
+                b':', self.factory.conn['remote']['port'].encode('latin-1'),
+                ])
+                if self.factory.conn.get('remote') else b'')
+            ])
+        # print(self.zmq_client_id)
+        connection[self.zmq_client_id] = self
+        #print('connection = ', end='')
+        #print(connection)
         # every connect will create dealer
         self.frontend = self.factory.zmq_handler.context.socket(zmq.DEALER)
-        self.frontend.setsockopt(zmq.IDENTITY, self.id_zmq)
+        self.frontend.setsockopt(zmq.IDENTITY, self.zmq_client_id)
         self.frontend.connect(self.zs_port)
         #self.closeTimer  = time.time()
         #reactor.callLater(3, self.isClose)
@@ -79,9 +84,9 @@ class Echo(protocol.Protocol):
         self.closeTimer = time.time()
         self.frontend.send_multipart([data])
 
-    def TCPSend(self, data):
-        print('TCPSend = ',end='')
-        print(data)
+    def tcpSend(self, data):
+        #print('tcpSend = ',end='')
+        #print(data)
         if data == b'/x00': self.isCl = True
         self.transport.write(data)
 
@@ -96,18 +101,17 @@ class Echo(protocol.Protocol):
         data = b'/x00'
         self.frontend.send_multipart([data])
         self.frontend.close()
-        connection.pop(self.id_zmq)
-        print('Connection close.  ', end='')
+        connection.pop(self.zmq_client_id)
+        # print('Connection close.  ', end='')
         self.transport.loseConnection()
-        print('connection = ', end='')
-        print(connection)
+        # print('connection = ', end='')
+        # print(connection)
 
 
 class EchoFactory(protocol.Factory):
-    def __init__(self, handle_error, connts, zmq_handler):
+    def __init__(self, handle_error, conn, zmq_handler):
         self.handle_error = handle_error
-        self.ip_out = connts['ip']
-        self.port_out = connts['port']
+        self.conn = conn
         self.zmq_handler = zmq_handler
         connection[b'0'] = self
         self.frontend = self.zmq_handler.context.socket(zmq.DEALER)
@@ -115,18 +119,18 @@ class EchoFactory(protocol.Factory):
         self.zs_port = ZS_PAIR_PORT
         self.frontend.connect(self.zs_port)
     def buildProtocol(self, addr):
-        print('Echo = ', end='')
-        print(addr)
+        # print('Echo = ', end='')
+        # print(addr)
         return Echo(self)
     def clientConnectionFailed(self, connector, reason):
-        print ("Connection failed.")
+        # print ("Connection failed.")
         reactor.stop()
     def clientConnectionLost(self, connector, reason):
-        print ("Connection lost.")
+        # print ("Connection lost.")
         reactor.stop()
 
 
-class Zmq_handler():
+class ZmqHandler():
     def __init__(self, handle_error, conn):
         self.handle_error = handle_error
         self.conn_backend = conn
@@ -148,7 +152,7 @@ class Zmq_handler():
        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        print ('zmq close()')
+        # print ('zmq close()')
         self.frontend.close()
         self.backend.close()
 
@@ -158,30 +162,30 @@ class Zmq_handler():
 
 
     def backend_handler(self):
-        #print('backend_handler')
-        [zmq_id, data] = self.backend.recv_multipart()
+        # print('backend_handler')
+        [zmq_backend_id, data] = self.backend.recv_multipart()
         data = Time.f_f('z.P', data)
-        #print('backend_recv = ',end ='')
-        #print(zmq_id, data)
-        if connection.get(zmq_id):
-             connection[zmq_id].TCPSend(data)
-        #print('backend_send = ',end='')
-        #print(zmq_id, data)
+        # print('backend_recv = ',end ='')
+        # print(zmq_backend_id, data)
+        if connection.get(zmq_backend_id):
+             connection[zmq_backend_id].tcpSend(data)
+        # print('backend_send = ',end='')
+        # print(zmq_backend_id, data)
 
 
     def frontend_handler(self):
-        #print('frontend_handler')
-        zmq_id, data = self.frontend.recv_multipart()
-        print(zmq_id)
-        print(data)
-        if zmq_id == b'0':
+        # print('frontend_handler')
+        zmq_frontend_id, data = self.frontend.recv_multipart()
+        # print(zmq_frontend_id)
+        # print(data)
+        if zmq_frontend_id == b'0':
             print('zmq.ZMQError')
             raise zmq.ZMQError
         #print('frontend_recv = ',end ='')
-        #print(zmq_id, data)
-        self.backend.send_multipart([zmq_id, data])
+        #print(zmq_frontend_id, data)
+        self.backend.send_multipart([zmq_frontend_id, data])
         #print('frontend_send = ',end='')
-        #print(zmq_id, data)
+        #print(zmq_frontend_id, data)
 
     def read_write(self):
         t = time.time()
@@ -194,8 +198,8 @@ class Zmq_handler():
                     self.backend_handler()
             if time.time() - 1 > t:
                 t += 1
-                print('send / s = ', end= '')
-                print(i)
+                # print('send / s = ', end= '')
+                # print(i)
                 i = 0
             if self.frontend in sockets:
                 if sockets[self.frontend] == zmq.POLLIN:
@@ -203,9 +207,9 @@ class Zmq_handler():
                     try:
                         self.frontend_handler()
                     except zmq.ZMQError:
-                        print('break')
+                        # print('break')
                         break
-        print('reactor.stop from zmq thread')
+        # print('reactor.stop from zmq thread')
         reactor.stop()
         return 0
 
@@ -213,16 +217,16 @@ class Zmq_handler():
 
 
 def signal_handler(signum, frame):
-    print('terminate twtoz')
-    print(connection)
+    # print('terminate twtoz')
+    # print(connection)
     connection[b'0'].frontend.send_multipart([b''])
 
 def main(conn):
-    with Zmq_handler(True, conn['zs']) as zmq_handler:
+    with ZmqHandler(True, conn['zs']) as zmq_handler:
         zmq_handler.run()
         reactor.listenTCP(int(conn['tc']['port']),
-            EchoFactory(True, conn['ts'], zmq_handler))
-        print('reactor.run()')
+            EchoFactory(True, conn['tc'], zmq_handler))
+        # print('reactor.run()')
         reactor.run()
     sys.exit(0)
 
@@ -238,10 +242,9 @@ if __name__ == '__main__':
 
     conntc = {'ip': '127.0.0.1', 'port': args.localport}
     connzs = {'ip': '127.0.0.1', 'port': args.zmqport}
-    connts = {'ip': args.remoteip, 'port': args.remoteport}
     conn = {}
     print('wait')
-    for d, k in zip((conntc, connts, connzs), ('tc', 'ts', 'zs')):
+    for d, k in zip((conntc, connzs), ('tc', 'zs')):
         conn[k] = d
         os.system('fuser -k '+d['port']+'/tcp')
     print(conn)
