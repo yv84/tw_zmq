@@ -33,8 +33,8 @@ class TwzmqTestCase(unittest.TestCase):
     def test_zmqc_zmqs(self):
         conn = {'ip': '127.0.0.1', 'port': '15067',
             'remote': {'ip': '127.0.0.1', 'port': '15085'}}
-        test_msg = (b'test', b'test2', )
-        N = 2
+        test_msg = (b'test', b'test2', b'test3')
+        N = 1
         manager = Manager()
         ls = manager.list(test_msg)
         ls_out = manager.list()
@@ -105,9 +105,9 @@ class TwzmqTestCase(unittest.TestCase):
 
 
     def test_tcpc_TwtoZ_zmqs(self):
-        conntc = {'ip': '127.0.0.1', 'port': '15084',
-            'remote': {'ip': '127.0.0.1', 'port': '15085'} }
-        connzs = {'ip': '127.0.0.1', 'port': '15086'}
+        conntc = {'ip': '127.0.0.1', 'port': '15094',
+            'remote': {'ip': '127.0.0.1', 'port': '15095'} }
+        connzs = {'ip': '127.0.0.1', 'port': '15096'}
         test_msg = (b'test', b'test2' )
         N = 5
         manager = Manager()
@@ -128,7 +128,7 @@ class TwzmqTestCase(unittest.TestCase):
 
         for p in processes[:2]:
             p.start()
-        time.sleep(0.1)
+        time.sleep(0.5)
         for p in processes[2:]:
             p.start()
             time.sleep(0.1)
@@ -145,41 +145,43 @@ class TwzmqTestCase(unittest.TestCase):
             p.join()
         processes[-1].terminate()
         processes[-1].join()
-        
-        print(processes)
+
+        #print(processes)
 
         for conn in (conntc, connzs):
             os.system('fuser -k '+conn['port']+'/tcp')
-        print(ls_out)
+        #print(ls_out)
         print('twtoz msg count %i' %len(ls_out))
         self.assertTrue(N*len(test_msg) == len(ls_out))
 
 
 
 
-    @unittest.skip("time")
+    #@unittest.skip("time")
     def test_zmqc_ZtoTw_tcps(self):
-        conncr = {'ip': '127.0.0.1', 'port': '15087'}
-        connzc = {'ip': '127.0.0.1', 'port': '15085'}
-        connts = {'ip': '127.0.0.1', 'port': '15086'}
-        test_msg = (b'test', b'test2' )
-        N = 5
+
+        connzc = {'ip': '127.0.0.1', 'port': '15091',
+            'remote': {'ip': '127.0.0.1', 'port': '15092'}}
+        test_msg = (b'test', b'test2', b'test3')
+        N = 1
         manager = Manager()
         ls = manager.list(test_msg)
         ls_out = manager.list()
         dc = {}
 
-        for d, k in zip((connzc, connts, conncr), ('zc', 'ts', 'cr')):
+        for d, k in zip((connzc,), ('zc',)):
             dc[k]  = manager.dict(d)
             os.system('fuser -k '+d['port']+'/tcp')
+            if d.get('remote'):
+                os.system('fuser -k '+d['remote']['port']+'/tcp')
 
         processes = []
-        processes.append(Process(target=zmqserv.zmq_serv, args=(dc['zs'],)))
-        processes.append(Process(target=twtoz.tw_to_z,
-                args=(dc,)))
+        processes.append(Process(target=tcpserv.tcp_serv, args=(dc['zc']['remote'],)))
+        processes.append(Process(target=ztotw.z_to_tw,
+                args=(dc['zc'],)))
         for i in range(N):
-            processes.append(Process(target=tcpcl.tcp_cl,
-                args=(dc['tc'], ls, ls_out,)))
+            processes.append(Process(target=zmqcl.zmq_cl,
+                args=(dc['zc'], ls, ls_out,)))
 
         for p in processes[:2]:
             p.start()
@@ -190,19 +192,22 @@ class TwzmqTestCase(unittest.TestCase):
 
         now = time.time()
         while N*len(test_msg) != len(ls_out) and \
-          (now+10 > time.time()):
+          (now+30 > time.time()):
             time.sleep(1)
         print("zmq = %.3f" %(time.time() - now))
 
         processes.reverse()
         for p in processes[:-3]:
             p.terminate()
+            p.join()
         processes[-1].terminate()
+        processes[-1].join()
         print(processes)
-        p.join()
 
-        for conn in (conntc, connts, connzs):
+        for conn in (connzc,):
             os.system('fuser -k '+conn['port']+'/tcp')
+            if d.get('remote'):
+                os.system('fuser -k '+d['remote']['port']+'/tcp')
         print(ls_out)
         print('twtoz msg count %i' %len(ls_out))
         self.assertTrue(N*len(test_msg) == len(ls_out))
