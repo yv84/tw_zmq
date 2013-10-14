@@ -208,7 +208,7 @@ class TwzmqTestCase(unittest.TestCase):
             os.system('fuser -k '+conn['port']+'/tcp')
             if d.get('remote'):
                 os.system('fuser -k '+d['remote']['port']+'/tcp')
-        print(ls_out)
+        #print(ls_out)
         print('twtoz msg count %i' %len(ls_out))
         self.assertTrue(N*len(test_msg) == len(ls_out))
 
