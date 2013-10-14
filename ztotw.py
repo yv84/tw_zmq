@@ -44,16 +44,12 @@ class Time():
         return ('%s  +/ %s: %s /' %
                 (data.decode('latin-1'),
                  name, now())).encode('latin-1')
-    def f_f(name, data):
-        return ('%s  -/ %s: %s /' %
-                (data.decode('latin-1'),
-                 name, now())).encode('latin-1')
-
 
 
 class EchoClient(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
+
     def connectionMade(self):
         connection[self.factory.connect_id] = self
         # every connect will create dealer
@@ -72,12 +68,6 @@ class EchoClient(protocol.Protocol):
         data = Time.f_f('t.S', data)
         self.transport.write(data)
 
-    def close(self):
-        self.zsocket.close()
-        connection.pop(self.factory.connect_id)
-        # print('Connection close.')
-        self.transport.loseConnection()
-
 
 class EchoFactory(protocol.ClientFactory):
     def __init__(self, zmq_handler, conn, data):
@@ -87,11 +77,14 @@ class EchoFactory(protocol.ClientFactory):
             b',', conn['ip'].encode('latin-1'),
             b':', str(conn['port']).encode('latin-1'),])
         self.data = data
+
     def buildProtocol(self, addr):
         return EchoClient(self)
+
     def clientConnectionFailed(self, connector, reason):
         print ("Connection failed.")
         reactor.stop()
+
     def clientConnectionLost(self, connector, reason):
         print ("Connection lost.")
         #reactor.stop()
@@ -104,7 +97,8 @@ class ZmqHandler():
     def __enter__(self):
         self.context = zmq.Context()
         self.frontend = self.context.socket(zmq.ROUTER)
-        self.frontend.bind(''.join(('tcp://',self.conn['ip'],':',self.conn['port'],)))
+        self.frontend.bind(''.join(
+            ('tcp://',self.conn['ip'],':',self.conn['port'],)))
 
         # every connect will create dealer
         self.backend = self.context.socket(zmq.ROUTER)
@@ -126,22 +120,18 @@ class ZmqHandler():
         self.frontend.close()
         self.backend.close()
 
-
-
     def run(self):
         reactor.callLater(0.3, self.tcpConnect)
         d = threads.deferToThread(self.read_write)
 
-
-
-    def backend_handler(self):
+    def backend_handler(self): # ROUTER
         [zmq_backend_id, data,] = self.backend.recv_multipart()
         if zmq_backend_id == b'stop_reactor':
             raise zmq.ZMQError
         data = Time.f_f('z.R', data)
         self.frontend.send_multipart([zmq_backend_id, b'', data])
 
-    def frontend_handler(self):
+    def frontend_handler(self): # ROUTER
         [frontend_id, connect_id, data] = self.frontend.recv_multipart()
         data = Time.f_f('z.P', data)
         if connect_id and connect_id in connection:
@@ -151,33 +141,22 @@ class ZmqHandler():
         elif connect_id:
             # get conn['server'] from packet header -> connect_id
             conn = {}
-
-            conn['connect_id'], conn['ip'], conn['port'], = \
+            conn['connect_id'], conn['ip'], conn['port'], conn['frontend_id'] = \
                 (re.findall(b'0x[\d\w]*', connect_id)[0],
                 b'.'.join(re.findall(b'(?<=[,.])\d+',connect_id)).decode('latin-1'),
-                int(re.findall(b'(?<=:)\d+', connect_id)[0]),
+                int(re.findall(b'(?<=:)\d+', connect_id)[0]), frontend_id
                 )
-            conn['frontend_id'] = frontend_id
             q_conn.put((conn, data,))
         else:
             pass
 
 
     def read_write(self):
-        # t = time.time()
-        # i = 0
-        # print('start')
         while True:
                 sockets = dict(self.poll.poll())
                 if self.frontend in sockets:
                     if sockets[self.frontend] == zmq.POLLIN:
                         self.frontend_handler()
-                        # i += 1
-                # if time.time() - 1 > t:
-                #    t += 1
-                #    # print('send / s = ', end= '')
-                #    # print(i)
-                #    i = 0
                 if self.backend in sockets:
                     if sockets[self.backend] == zmq.POLLIN:
                         try:

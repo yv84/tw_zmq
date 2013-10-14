@@ -44,11 +44,6 @@ class Time():
         return ('%s  +/ %s: %s /' %
                 (data.decode('latin-1'),
                  name, now())).encode('latin-1')
-    def f_f(name, data):
-        return ('%s  -/ %s: %s /' %
-                (data.decode('latin-1'),
-                 name, now())).encode('latin-1')
-
 
 
 class Echo(protocol.Protocol):
@@ -74,32 +69,14 @@ class Echo(protocol.Protocol):
         self.frontend.connect(self.zs_port)
 
     def dataReceived(self, data):
-        self.closeTimer = time.time()
         self.frontend.send_multipart([data])
 
     def tcpSend(self, data):
-        if data == b'/x00': self.isCl = True
         self.transport.write(data)
-
-    def isClose(self):
-        if (self.closeTimer + 3 < time.time()) or self.isCl:
-            self.close()
-        else:
-            reactor.callLater(3, self.isClose)
-        return 0
-
-    def close(self):
-        data = b'/x00'
-        self.frontend.send_multipart([data])
-        self.frontend.close()
-        connection.pop(self.zmq_client_id)
-        # print('Connection close.  ', end='')
-        self.transport.loseConnection()
 
 
 class EchoFactory(protocol.Factory):
-    def __init__(self, handle_error, conn, zmq_handler):
-        self.handle_error = handle_error
+    def __init__(self, conn, zmq_handler):
         self.conn = conn
         self.zmq_handler = zmq_handler
         connection[b'stop_reactor'] = self
@@ -118,13 +95,11 @@ class EchoFactory(protocol.Factory):
 
 
 class ZmqHandler():
-    def __init__(self, handle_error, conn):
-        self.handle_error = handle_error
+    def __init__(self, conn):
         self.conn_backend = conn
         self.conn_frontend = ZS_PAIR_PORT
 
     def __enter__(self):
-
        self.context = zmq.Context()
        self.backend = self.context.socket(zmq.DEALER)
        self.backend.setsockopt(zmq.IDENTITY, b'0')
@@ -142,41 +117,30 @@ class ZmqHandler():
         self.frontend.close()
         self.backend.close()
 
-
     def run(self):
         threads.deferToThread(self.read_write)
 
-
-    def backend_handler(self):
+    def backend_handler(self): # DEALER
         [zmq_backend_id, data] = self.backend.recv_multipart()
         data = Time.f_f('z.P', data)
         if connection.get(zmq_backend_id):
              connection[zmq_backend_id].tcpSend(data)
 
-
-    def frontend_handler(self):
+    def frontend_handler(self): # ROUTER
         zmq_frontend_id, data = self.frontend.recv_multipart()
         if zmq_frontend_id == b'stop_reactor':
             raise zmq.ZMQError
         self.backend.send_multipart([zmq_frontend_id, data])
 
     def read_write(self):
-        #t = time.time()
-        #i = 0
         while True:
             now = time.time()
             sockets = dict(self.poll.poll())
             if self.backend in sockets:
                 if sockets[self.backend] == zmq.POLLIN:
                     self.backend_handler()
-            # if time.time() - 1 > t:
-            #    t += 1
-            #    # print('send / s = ', end= '')
-            #    # print(i)
-            #    i = 0
             if self.frontend in sockets:
                 if sockets[self.frontend] == zmq.POLLIN:
-                    #i += 1
                     try:
                         self.frontend_handler()
                     except zmq.ZMQError:
@@ -185,16 +149,15 @@ class ZmqHandler():
         return 0
 
 
-
-
 def signal_handler(signum, frame):
     connection[b'stop_reactor'].frontend.send_multipart([b'',])
 
+    
 def main(conn):
-    with ZmqHandler(True, conn['zs']) as zmq_handler:
+    with ZmqHandler(conn['zs']) as zmq_handler:
         zmq_handler.run()
         reactor.listenTCP(int(conn['tc']['port']),
-            EchoFactory(True, conn['tc'], zmq_handler))
+            EchoFactory(conn['tc'], zmq_handler))
         reactor.run()
     print('stop')
     sys.exit(0)
@@ -213,7 +176,6 @@ if __name__ == '__main__':
         'remote': {'ip': args.remoteip, 'port': args.remoteport} }
     connzs = {'ip': '127.0.0.1', 'port': args.zmqport}
 
-
     conn = {}
     print('wait')
     for d, k in zip((conntc, connzs), ('tc', 'zs')):
@@ -225,3 +187,4 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, signal_handler)
     #signal.signal(signal.SIGQUIT, signal_handler)
     main(conn)
+

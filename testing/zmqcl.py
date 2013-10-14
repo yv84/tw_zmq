@@ -29,7 +29,7 @@ class ZmqClient():
     def send(self, msg):
         data = (('%s  +/ cl: %s /' %(msg.decode('latin-1'),
                 now())).encode('latin-1'))
-        self.socket.send_multipart([self.connect_id, data])
+        self.socket.send_multipart([self.connect_id, data]) # + ID_Dealer
 
     def recv(self):
         #  Get the reply.

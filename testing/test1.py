@@ -10,6 +10,7 @@ import unittest
 
 import twtoz
 import ztotw
+import zasync
 import testing.zmqcl as zmqcl
 import testing.zmqserv as zmqserv
 import testing.tcpserv as tcpserv
@@ -17,9 +18,12 @@ import testing.tcpcl as tcpcl
 
 
 class TwzmqTestCase(unittest.TestCase):
-    def setUp(self):
-        pass
 
+    def setUp(self):
+        self.port1 = '15067'
+        self.port2 = '15068'
+        self.port3 = '15069'
+        self.test_msg = (b'test', b'test2', b'test3')
 
     def tearDown(self):
         pass
@@ -31,12 +35,12 @@ class TwzmqTestCase(unittest.TestCase):
 
 
     def test_zmqc_zmqs(self):
-        conn = {'ip': '127.0.0.1', 'port': '15067',
-            'remote': {'ip': '127.0.0.1', 'port': '15085'}}
-        test_msg = (b'test', b'test2', b'test3')
+        conn = {'ip': '127.0.0.1', 'port': self.port1,
+            'remote': {'ip': '127.0.0.1', 'port': self.port2}}
+        
         N = 1
         manager = Manager()
-        ls = manager.list(test_msg)
+        ls = manager.list(self.test_msg)
         ls_out = manager.list()
         dc = manager.dict(conn)
         os.system('fuser -k '+conn['port']+'/tcp')
@@ -51,7 +55,7 @@ class TwzmqTestCase(unittest.TestCase):
             time.sleep(0.1)
 
         now = time.time()
-        while N*len(test_msg) != len(ls_out) and \
+        while N*len(self.test_msg) != len(ls_out) and \
           (now+30 > time.time()):
             time.sleep(1)
         print("zmq = %.3f" %(time.time() - now))
@@ -64,16 +68,15 @@ class TwzmqTestCase(unittest.TestCase):
         os.system('fuser -k '+conn['port']+'/tcp')
         #print(ls_out)
         print('zmq msg count %i' %len(ls_out))
-        self.assertTrue(N*len(test_msg) == len(ls_out))
+        self.assertTrue(N*len(self.test_msg) == len(ls_out))
 
 
     def test_tcpc_tcps(self):
 
-        conn = {'ip': '127.0.0.1', 'port': '15079'}
-        test_msg = (b'test', b'test2', b'test3')
+        conn = {'ip': '127.0.0.1', 'port': self.port1}
         N = 10
         manager = Manager()
-        ls = manager.list(test_msg)
+        ls = manager.list(self.test_msg)
         ls_out = manager.list()
         dc = manager.dict(conn)
         os.system('fuser -k '+conn['port']+'/tcp')
@@ -88,7 +91,7 @@ class TwzmqTestCase(unittest.TestCase):
             time.sleep(0.1)
 
         now = time.time()
-        while N*len(test_msg) != len(ls_out) and \
+        while N*len(self.test_msg) != len(ls_out) and \
           (now+30 > time.time()):
             time.sleep(1)
         print("tcp = %.3f" %(time.time() - now))
@@ -101,17 +104,16 @@ class TwzmqTestCase(unittest.TestCase):
         os.system('fuser -k '+conn['port']+'/tcp')
         #print(ls_out)
         print('tcp msg count %i' %len(ls_out))
-        self.assertTrue(N*len(test_msg) == len(ls_out))
+        self.assertTrue(N*len(self.test_msg) == len(ls_out))
 
 
     def test_tcpc_TwtoZ_zmqs(self):
-        conntc = {'ip': '127.0.0.1', 'port': '15094',
-            'remote': {'ip': '127.0.0.1', 'port': '15095'} }
-        connzs = {'ip': '127.0.0.1', 'port': '15096'}
-        test_msg = (b'test', b'test2' )
+        conntc = {'ip': '127.0.0.1', 'port':  self.port1,
+            'remote': {'ip': '127.0.0.1', 'port':  self.port2} }
+        connzs = {'ip': '127.0.0.1', 'port':  self.port3}
         N = 5
         manager = Manager()
-        ls = manager.list(test_msg)
+        ls = manager.list(self.test_msg)
         ls_out = manager.list()
         dc = {}
         for d, k in zip((conntc, connzs), ('tc', 'zs')):
@@ -134,7 +136,7 @@ class TwzmqTestCase(unittest.TestCase):
             time.sleep(0.1)
 
         now = time.time()
-        while N*len(test_msg) != len(ls_out) and \
+        while N*len(self.test_msg) != len(ls_out) and \
           (now+10 > time.time()):
             time.sleep(1)
         print("zmq = %.3f" %(time.time() - now))
@@ -146,26 +148,24 @@ class TwzmqTestCase(unittest.TestCase):
         processes[-1].terminate()
         processes[-1].join()
 
-        #print(processes)
+        # print(processes)
 
         for conn in (conntc, connzs):
             os.system('fuser -k '+conn['port']+'/tcp')
         #print(ls_out)
         print('twtoz msg count %i' %len(ls_out))
-        self.assertTrue(N*len(test_msg) == len(ls_out))
+        self.assertTrue(N*len(self.test_msg) == len(ls_out))
 
 
 
 
-    #@unittest.skip("time")
     def test_zmqc_ZtoTw_tcps(self):
 
-        connzc = {'ip': '127.0.0.1', 'port': '15091',
-            'remote': {'ip': '127.0.0.1', 'port': '15092'}}
-        test_msg = (b'test', b'test2', b'test3')
+        connzc = {'ip': '127.0.0.1', 'port':  self.port1,
+            'remote': {'ip': '127.0.0.1', 'port':  self.port2}}
         N = 1
         manager = Manager()
-        ls = manager.list(test_msg)
+        ls = manager.list(self.test_msg)
         ls_out = manager.list()
         dc = {}
 
@@ -191,7 +191,7 @@ class TwzmqTestCase(unittest.TestCase):
             time.sleep(0.1)
 
         now = time.time()
-        while N*len(test_msg) != len(ls_out) and \
+        while N*len(self.test_msg) != len(ls_out) and \
           (now+30 > time.time()):
             time.sleep(1)
         print("zmq = %.3f" %(time.time() - now))
@@ -202,7 +202,7 @@ class TwzmqTestCase(unittest.TestCase):
             p.join()
         processes[-1].terminate()
         processes[-1].join()
-        print(processes)
+        # print(processes)
 
         for conn in (connzc,):
             os.system('fuser -k '+conn['port']+'/tcp')
@@ -210,9 +210,53 @@ class TwzmqTestCase(unittest.TestCase):
                 os.system('fuser -k '+d['remote']['port']+'/tcp')
         #print(ls_out)
         print('twtoz msg count %i' %len(ls_out))
-        self.assertTrue(N*len(test_msg) == len(ls_out))
+        self.assertTrue(N*len(self.test_msg) == len(ls_out))
 
 
+
+    # @unittest.skip("time")
+    def test_zmqc_ZAsync_zmqs(self):
+        connzc = {'ip': '127.0.0.1', 'port':  self.port1,
+            'remote': {'ip': '127.0.0.1', 'port':  self.port2}}
+        connzs = {'ip': '127.0.0.1', 'port':  self.port3}
+        N = 1
+        manager = Manager()
+        ls = manager.list(self.test_msg)
+        ls_out = manager.list()
+        dc = manager.dict()
+        for d, k in zip((connzc, connzs), ('zc','zs')):
+            dc[k]  = manager.dict(d)
+            os.system('fuser -k '+d['port']+'/tcp')
+
+        processes = [Process(target=zmqserv.zmq_serv, args=(dc['zs'],)),]
+        processes.append(Process(target=zasync.z_async, args=(dc,)))
+        for i in range(N):
+            processes.append(Process(target=zmqcl.zmq_cl, args=(dc['zc'], ls, ls_out,)))
+
+        processes[0].start()
+        processes[1].start()
+        time.sleep(0.1)
+        for p in processes[2:]:
+            p.start()
+            time.sleep(0.1)
+
+        now = time.time()
+        while N*len(self.test_msg) != len(ls_out) and \
+          (now+10 > time.time()):
+            time.sleep(1)
+        print("zmq = %.3f" %(time.time() - now))
+
+        processes.reverse()
+        for p in processes:
+            p.terminate()
+            p.join()
+
+        for d, k in zip((connzc, connzs), ('zc','zs')):
+            dc[k]  = manager.dict(d)
+            os.system('fuser -k '+d['port']+'/tcp')
+        # print(ls_out)
+        print('zmq msg count %i' %len(ls_out))
+        self.assertTrue(N*len(self.test_msg) == len(ls_out))
 
 
 

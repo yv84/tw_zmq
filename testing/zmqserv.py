@@ -22,12 +22,20 @@ class ZmqServ():
         while True:
             socks = dict(self.poller.poll())
             if socks.get(self.socket) == zmq.POLLIN:
-                [zmq_id, address, message ] = self.socket.recv_multipart()
-                self.socket.send_multipart([zmq_id, address,
-                    ('Echo disp hw=>%s at %s' % (message,
-                        now())).encode('latin-1')])
+                self.send(self.recv())
+
+    def send(self, args):
+        self.socket.send_multipart([args[0], args[1],
+             ('Echo disp hw=>%s at %s' % (args[2],
+                now())).encode('latin-1')])
+
+    def recv(self):
+        args = []
+        args.extend(self.socket.recv_multipart())
+        return args
 
 def zmq_serv(conn):
+    print(conn)
     z = ZmqServ(conn)
     z.run()
 
@@ -36,4 +44,3 @@ if __name__ == '__main__':
     conn = {'ip': '127.0.0.1', 'port': '15065'}
     z = ZmqServ(conn)
     z.run()
- 
